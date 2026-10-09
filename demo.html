@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CineFind - Movie Search &amp; Recommendations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --curtain:#2a0f18;      /* oxblood background */
+    --velvet:#3b1a26;       /* raised surfaces */
+    --velvet-2:#4a2432;     /* borders / hover */
+    --paper:#f3e6d3;        /* main text */
+    --muted:#c2a99a;        /* secondary text */
+    --bulb:#f0b44c;         /* marquee gold accent */
+    --ok:#9fd6a8;
+    --display:"DM Serif Display",Georgia,"Times New Roman",serif;
+    --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--curtain);color:var(--paper);font-family:var(--body);line-height:1.5;min-height:100vh}
+  button,input,select{font:inherit;color:inherit}
+  :focus-visible{outline:2px solid var(--bulb);outline-offset:2px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+  /* header */
+  header{padding:28px 0 18px;border-bottom:2px dotted var(--velvet-2)}
+  .brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .brand h1{font-family:var(--display);font-weight:400;font-size:clamp(2.2rem,6vw,3.6rem);margin:0;letter-spacing:.01em;line-height:1}
+  .brand h1 span{color:var(--bulb)}
+  .brand p{margin:0;color:var(--muted);font-size:.95rem}
+  .searchrow{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+  .searchrow input{flex:1 1 260px;background:var(--velvet);border:1px solid var(--velvet-2);border-radius:999px;padding:12px 18px;font-size:1rem}
+  .searchrow input::placeholder{color:var(--muted)}
+  .searchrow select{background:var(--velvet);border:1px solid var(--velvet-2);border-radius:999px;padding:12px 16px}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:14px 0 4px;scrollbar-width:thin}
+  .chip{flex:0 0 auto;border:1px solid var(--velvet-2);background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer;color:var(--muted);font-size:.9rem}
+  .chip:hover{border-color:var(--bulb);color:var(--paper)}
+  .chip[aria-pressed="true"]{background:var(--bulb);border-color:var(--bulb);color:#2a0f18;font-weight:600}
+
+  /* tabs */
+  nav.tabs{display:flex;gap:6px;margin:22px 0 6px;flex-wrap:wrap}
+  .tab{background:none;border:none;border-bottom:3px solid transparent;padding:8px 14px;cursor:pointer;color:var(--muted);font-weight:500;font-size:1rem}
+  .tab:hover{color:var(--paper)}
+  .tab[aria-selected="true"]{color:var(--paper);border-bottom-color:var(--bulb)}
+  .tab .count{display:inline-block;min-width:1.4em;text-align:center;background:var(--velvet-2);border-radius:999px;padding:0 6px;font-size:.8rem;margin-left:6px}
+  #note{color:var(--muted);margin:8px 0 18px;min-height:1.4em}
+
+  /* poster grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:18px;padding-bottom:60px}
+  .poster{position:relative;aspect-ratio:2/3;border-radius:6px;overflow:hidden;cursor:pointer;border:none;text-align:left;padding:0;
+    box-shadow:0 0 0 1px rgba(255,255,255,.06),0 10px 24px rgba(0,0,0,.35);display:block;width:100%}
+  .poster:hover{box-shadow:0 0 0 2px var(--bulb),0 10px 24px rgba(0,0,0,.35)}
+  .poster .art{position:absolute;inset:0;padding:14px 12px;display:flex;flex-direction:column;justify-content:space-between}
+  .poster .year{font-size:.8rem;color:rgba(255,255,255,.7)}
+  .poster .ttl{font-family:var(--display);font-size:1.35rem;line-height:1.1;color:#fff;overflow-wrap:anywhere}
+  .poster .gen{font-size:.78rem;color:rgba(255,255,255,.78);margin-top:6px}
+  .badge{position:absolute;top:10px;right:10px;background:var(--bulb);color:#2a0f18;font-weight:700;font-size:.82rem;border-radius:4px;padding:2px 7px}
+  .marks{position:absolute;left:10px;bottom:10px;display:flex;gap:6px}
+  .mark{background:rgba(0,0,0,.55);border-radius:4px;padding:1px 6px;font-size:.78rem}
+  .empty{grid-column:1/-1;padding:40px 0;color:var(--muted)}
+  .empty strong{display:block;color:var(--paper);font-family:var(--display);font-weight:400;font-size:1.5rem;margin-bottom:4px}
+
+  /* detail dialog */
+  dialog{background:var(--velvet);color:var(--paper);border:1px solid var(--velvet-2);border-radius:10px;max-width:760px;width:calc(100% - 28px);padding:0}
+  dialog::backdrop{background:rgba(10,3,6,.75)}
+  .d-top{display:grid;grid-template-columns:200px 1fr;gap:22px;padding:22px}
+  .d-top .poster{cursor:default;box-shadow:none}
+  .d-top .poster:hover{box-shadow:none}
+  .d-info h2{font-family:var(--display);font-weight:400;font-size:2rem;line-height:1.1;margin:0 0 6px}
+  .meta{color:var(--muted);font-size:.92rem;margin-bottom:12px}
+  .rate{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .rate .big{font-family:var(--display);font-size:2.2rem;color:var(--bulb);line-height:1}
+  .bar{flex:1;max-width:180px;height:6px;background:var(--velvet-2);border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--bulb)}
+  .d-info dl{margin:14px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.93rem}
+  .d-info dt{color:var(--muted)}
+  .d-info dd{margin:0}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .btn{border:1px solid var(--bulb);background:transparent;color:var(--bulb);border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:600}
+  .btn:hover{background:rgba(240,180,76,.12)}
+  .btn.on{background:var(--bulb);color:#2a0f18}
+  .d-similar{border-top:2px dotted var(--velvet-2);padding:16px 22px 22px}
+  .d-similar h3{font-family:var(--display);font-weight:400;font-size:1.3rem;margin:0 0 12px}
+  .d-similar .grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;padding-bottom:0}
+  .d-similar .ttl{font-size:.95rem}
+  .d-similar .badge{font-size:.7rem;top:6px;right:6px}
+  .close{position:absolute;top:10px;right:12px;background:none;border:none;font-size:1.6rem;cursor:pointer;color:var(--muted);line-height:1}
+  @media (max-width:560px){
+    .d-top{grid-template-columns:1fr}
+    .d-top .poster{max-width:180px}
+    .grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  footer{border-top:2px dotted var(--velvet-2);padding:18px 0 30px;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <h1>Cine<span>Find</span></h1>
+      <p>Search films, save favourites, build a watchlist and get picks by genre.</p>
+    </div>
+    <div class="searchrow">
+      <input id="q" type="search" placeholder="Search by title or genre, e.g. Nolan, Horror, Inception" aria-label="Search movies">
+      <select id="sort" aria-label="Sort movies">
+        <option value="rating">Highest rated</option>
+        <option value="year">Newest first</option>
+        <option value="title">Title A-Z</option>
+      </select>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filter by genre"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="discover" aria-selected="true">Discover</button>
+    <button class="tab" role="tab" data-tab="foryou" aria-selected="false">For you</button>
+    <button class="tab" role="tab" data-tab="favourites" aria-selected="false">Favourites<span class="count" id="c-fav">0</span></button>
+    <button class="tab" role="tab" data-tab="watchlist" aria-selected="false">Watchlist<span class="count" id="c-watch">0</span></button>
+  </nav>
+  <div id="note" aria-live="polite"></div>
+  <section class="grid" id="grid"></section>
+</main>
+
+<footer><div class="wrap">CineFind - BCA mini project. Sample data of 30 films; ratings are out of 10.</div></footer>
+
+<dialog id="dlg" aria-label="Movie details"></dialog>
+
+<script>
+/* true = true when this file is opened on its own (demo.html), false when served by Flask */
+const DEMO_MODE = true;
+const DEMO_MOVIES = [{"id": 1, "title": "The Shawshank Redemption", "year": 1994, "genres": ["Drama"], "rating": 9.3, "runtime": 142, "director": "Frank Darabont", "cast": ["Tim Robbins", "Morgan Freeman"], "plot": "A banker jailed for a crime he says he did not commit builds an unlikely friendship and quietly plans his escape."}, {"id": 2, "title": "The Godfather", "year": 1972, "genres": ["Crime", "Drama"], "rating": 9.2, "runtime": 175, "director": "Francis Ford Coppola", "cast": ["Marlon Brando", "Al Pacino"], "plot": "The ageing head of a crime family hands control to his reluctant youngest son."}, {"id": 3, "title": "The Dark Knight", "year": 2008, "genres": ["Action", "Crime", "Thriller"], "rating": 9.0, "runtime": 152, "director": "Christopher Nolan", "cast": ["Christian Bale", "Heath Ledger"], "plot": "Batman faces a chaotic criminal who pushes Gotham City to its breaking point."}, {"id": 4, "title": "Inception", "year": 2010, "genres": ["Sci-Fi", "Action", "Thriller"], "rating": 8.8, "runtime": 148, "director": "Christopher Nolan", "cast": ["Leonardo DiCaprio", "Elliot Page"], "plot": "A thief who steals secrets from dreams is offered one last job: planting an idea inside a target's mind."}, {"id": 5, "title": "Interstellar", "year": 2014, "genres": ["Sci-Fi", "Drama", "Adventure"], "rating": 8.7, "runtime": 169, "director": "Christopher Nolan", "cast": ["Matthew McConaughey", "Anne Hathaway"], "plot": "Explorers travel through a wormhole to find a new home for humanity as Earth fails."}, {"id": 6, "title": "The Matrix", "year": 1999, "genres": ["Sci-Fi", "Action"], "rating": 8.7, "runtime": 136, "director": "The Wachowskis", "cast": ["Keanu Reeves", "Laurence Fishburne"], "plot": "A hacker discovers his world is a simulation and joins a rebellion against its machine rulers."}, {"id": 7, "title": "Pulp Fiction", "year": 1994, "genres": ["Crime", "Drama"], "rating": 8.9, "runtime": 154, "director": "Quentin Tarantino", "cast": ["John Travolta", "Samuel L. Jackson"], "plot": "Several criminals' stories in Los Angeles collide in a non-linear tale of violence and redemption."}, {"id": 8, "title": "Forrest Gump", "year": 1994, "genres": ["Drama", "Romance"], "rating": 8.8, "runtime": 142, "director": "Robert Zemeckis", "cast": ["Tom Hanks", "Robin Wright"], "plot": "A kind-hearted man with a low IQ unknowingly takes part in decades of American history."}, {"id": 9, "title": "Gladiator", "year": 2000, "genres": ["Action", "Drama", "Adventure"], "rating": 8.5, "runtime": 155, "director": "Ridley Scott", "cast": ["Russell Crowe", "Joaquin Phoenix"], "plot": "A betrayed Roman general becomes a gladiator and seeks revenge on the emperor who destroyed his family."}, {"id": 10, "title": "Titanic", "year": 1997, "genres": ["Romance", "Drama"], "rating": 7.9, "runtime": 194, "director": "James Cameron", "cast": ["Leonardo DiCaprio", "Kate Winslet"], "plot": "A young artist and a first-class passenger fall in love aboard the doomed ocean liner."}, {"id": 11, "title": "Jurassic Park", "year": 1993, "genres": ["Adventure", "Sci-Fi", "Thriller"], "rating": 8.2, "runtime": 127, "director": "Steven Spielberg", "cast": ["Sam Neill", "Laura Dern"], "plot": "A theme park of cloned dinosaurs turns deadly when its security systems fail."}, {"id": 12, "title": "The Lion King", "year": 1994, "genres": ["Animation", "Adventure", "Family"], "rating": 8.5, "runtime": 88, "director": "Roger Allers, Rob Minkoff", "cast": ["Matthew Broderick", "Jeremy Irons"], "plot": "A young lion prince flees after his father's death, then returns to reclaim his kingdom."}, {"id": 13, "title": "Toy Story", "year": 1995, "genres": ["Animation", "Comedy", "Family"], "rating": 8.3, "runtime": 81, "director": "John Lasseter", "cast": ["Tom Hanks", "Tim Allen"], "plot": "A cowboy doll feels threatened when a new space-ranger toy becomes the favourite of their owner."}, {"id": 14, "title": "Spirited Away", "year": 2001, "genres": ["Animation", "Fantasy", "Adventure"], "rating": 8.6, "runtime": 125, "director": "Hayao Miyazaki", "cast": ["Rumi Hiiragi", "Miyu Irino"], "plot": "A girl wanders into a world of spirits and must work in a bathhouse to free her parents."}, {"id": 15, "title": "Parasite", "year": 2019, "genres": ["Thriller", "Drama", "Comedy"], "rating": 8.5, "runtime": 132, "director": "Bong Joon-ho", "cast": ["Song Kang-ho", "Choi Woo-shik"], "plot": "A poor family schemes its way into the lives of a wealthy household, with unexpected consequences."}, {"id": 16, "title": "Get Out", "year": 2017, "genres": ["Horror", "Thriller"], "rating": 7.7, "runtime": 104, "director": "Jordan Peele", "cast": ["Daniel Kaluuya", "Allison Williams"], "plot": "A young man visiting his girlfriend's family discovers a disturbing secret behind their warm welcome."}, {"id": 17, "title": "The Conjuring", "year": 2013, "genres": ["Horror", "Mystery"], "rating": 7.5, "runtime": 112, "director": "James Wan", "cast": ["Vera Farmiga", "Patrick Wilson"], "plot": "Paranormal investigators help a family terrorised by a dark presence in their farmhouse."}, {"id": 18, "title": "Se7en", "year": 1995, "genres": ["Crime", "Mystery", "Thriller"], "rating": 8.6, "runtime": 127, "director": "David Fincher", "cast": ["Brad Pitt", "Morgan Freeman"], "plot": "Two detectives hunt a serial killer whose crimes are modelled on the seven deadly sins."}, {"id": 19, "title": "The Silence of the Lambs", "year": 1991, "genres": ["Thriller", "Crime", "Horror"], "rating": 8.6, "runtime": 118, "director": "Jonathan Demme", "cast": ["Jodie Foster", "Anthony Hopkins"], "plot": "An FBI trainee seeks help from an imprisoned cannibalistic psychiatrist to catch another killer."}, {"id": 20, "title": "The Lord of the Rings: The Fellowship of the Ring", "year": 2001, "genres": ["Fantasy", "Adventure", "Action"], "rating": 8.8, "runtime": 178, "director": "Peter Jackson", "cast": ["Elijah Wood", "Ian McKellen"], "plot": "A young hobbit and a fellowship of allies set out to destroy a ring of terrible power."}, {"id": 21, "title": "Harry Potter and the Sorcerer's Stone", "year": 2001, "genres": ["Fantasy", "Adventure", "Family"], "rating": 7.6, "runtime": 152, "director": "Chris Columbus", "cast": ["Daniel Radcliffe", "Emma Watson"], "plot": "An orphan discovers he is a wizard and begins his first year at a school of magic."}, {"id": 22, "title": "3 Idiots", "year": 2009, "genres": ["Comedy", "Drama"], "rating": 8.4, "runtime": 170, "director": "Rajkumar Hirani", "cast": ["Aamir Khan", "R. Madhavan"], "plot": "Two friends look back on their engineering-college days and search for a missing friend who taught them to chase their passion."}, {"id": 23, "title": "Dangal", "year": 2016, "genres": ["Drama", "Sport", "Action"], "rating": 8.3, "runtime": 161, "director": "Nitesh Tiwari", "cast": ["Aamir Khan", "Fatima Sana Shaikh"], "plot": "A former wrestler trains his daughters to become world-class champions despite social pressure."}, {"id": 24, "title": "Baahubali: The Beginning", "year": 2015, "genres": ["Action", "Fantasy", "Adventure"], "rating": 8.0, "runtime": 159, "director": "S. S. Rajamouli", "cast": ["Prabhas", "Rana Daggubati"], "plot": "A young man raised in a village learns he is heir to a kingdom and sets out to claim his destiny."}, {"id": 25, "title": "K.G.F: Chapter 1", "year": 2018, "genres": ["Action", "Crime", "Drama"], "rating": 8.2, "runtime": 156, "director": "Prashanth Neel", "cast": ["Yash", "Srinidhi Shetty"], "plot": "A man rises from poverty to rule the gold mines of Kolar, driven by a promise to his dying mother."}, {"id": 26, "title": "Kantara", "year": 2022, "genres": ["Action", "Drama", "Thriller"], "rating": 8.2, "runtime": 148, "director": "Rishab Shetty", "cast": ["Rishab Shetty", "Sapthami Gowda"], "plot": "A village's bond with the forest and its guardian spirit is tested by a clash with a forest officer."}, {"id": 27, "title": "La La Land", "year": 2016, "genres": ["Romance", "Drama", "Musical"], "rating": 8.0, "runtime": 128, "director": "Damien Chazelle", "cast": ["Ryan Gosling", "Emma Stone"], "plot": "A jazz pianist and an aspiring actress chase their dreams in Los Angeles while their love is tested."}, {"id": 28, "title": "The Notebook", "year": 2004, "genres": ["Romance", "Drama"], "rating": 7.8, "runtime": 123, "director": "Nick Cassavetes", "cast": ["Ryan Gosling", "Rachel McAdams"], "plot": "An old man reads a couple's decades-long love story to a woman with memory loss."}, {"id": 29, "title": "Mad Max: Fury Road", "year": 2015, "genres": ["Action", "Adventure", "Sci-Fi"], "rating": 8.1, "runtime": 120, "director": "George Miller", "cast": ["Tom Hardy", "Charlize Theron"], "plot": "In a desert wasteland, a drifter and a rebel commander flee a tyrant across a relentless chase."}, {"id": 30, "title": "The Grand Budapest Hotel", "year": 2014, "genres": ["Comedy", "Drama", "Mystery"], "rating": 8.1, "runtime": 99, "director": "Wes Anderson", "cast": ["Ralph Fiennes", "Tony Revolori"], "plot": "A legendary hotel concierge and his young lobby boy are drawn into the theft of a priceless painting."}];
+
+const GRADIENTS = {
+  "Action":["#a03a1f","#2a0d08"],"Drama":["#40467a","#12142a"],"Crime":["#6b5a22","#1d1707"],
+  "Sci-Fi":["#1f6478","#06212a"],"Thriller":["#4a4a52","#0e0e12"],"Horror":["#7a1630","#1a0409"],
+  "Romance":["#9c3f66","#2b0e1c"],"Comedy":["#b07a1c","#2e1b05"],"Animation":["#1f8a78","#072a25"],
+  "Adventure":["#4a7a2c","#102108"],"Fantasy":["#6a3fa0","#1a0e30"],"Family":["#2f78a0","#0b202c"],
+  "Mystery":["#56406a","#150f20"],"Sport":["#2f7a52","#0b241a"],"Musical":["#a0661f","#2a1907"]
+};
+
+/* ---------------- data layer ---------------- */
+const Store = {
+  state:{favourites:[],watchlist:[]},
+  movies:[]            // only used in demo mode
+};
+
+async function http(method, url){
+  const r = await fetch(url,{method});
+  if(!r.ok) throw new Error("Request failed: "+r.status);
+  return r.json();
+}
+function saveLocal(){ localStorage.setItem("cinefind-state", JSON.stringify(Store.state)); }
+
+async function loadState(){
+  if(DEMO_MODE){
+    Store.movies = DEMO_MOVIES;
+    try{ Store.state = JSON.parse(localStorage.getItem("cinefind-state")) || Store.state; }catch(e){}
+  }else{
+    Store.state = await http("GET","/api/state");
+  }
+}
+async function getGenres(){
+  if(DEMO_MODE) return [...new Set(Store.movies.flatMap(m=>m.genres))].sort();
+  return http("GET","/api/genres");
+}
+async function getMovies(q,genre,sort){
+  if(!DEMO_MODE){
+    const p = new URLSearchParams({q,genre,sort});
+    return http("GET","/api/movies?"+p);
+  }
+  const needle = q.trim().toLowerCase();
+  let list = Store.movies.filter(m=>{
+    if(genre && !m.genres.includes(genre)) return false;
+    const hay = (m.title+" "+m.genres.join(" ")).toLowerCase();
+    return !needle || hay.includes(needle);
+  });
+  if(sort==="title") list.sort((a,b)=>a.title.localeCompare(b.title));
+  else if(sort==="year") list.sort((a,b)=>b.year-a.year);
+  else list.sort((a,b)=>b.rating-a.rating);
+  return list;
+}
+function similarLocal(id){
+  const base = Store.movies.find(m=>m.id===id);
+  return Store.movies.filter(m=>m.id!==id)
+    .map(m=>({m,o:m.genres.filter(g=>base.genres.includes(g)).length}))
+    .filter(x=>x.o>0)
+    .sort((a,b)=>b.o-a.o || b.m.rating-a.m.rating)
+    .slice(0,6).map(x=>x.m);
+}
+async function getMovie(id){
+  if(!DEMO_MODE) return http("GET","/api/movies/"+id);
+  return {...Store.movies.find(m=>m.id===id), similar:similarLocal(id)};
+}
+async function getRecs(){
+  if(!DEMO_MODE) return http("GET","/api/recommendations");
+  const profile = {};
+  Store.state.favourites.forEach(id=>Store.movies.find(m=>m.id===id).genres.forEach(g=>profile[g]=(profile[g]||0)+2));
+  Store.state.watchlist.forEach(id=>Store.movies.find(m=>m.id===id).genres.forEach(g=>profile[g]=(profile[g]||0)+1));
+  if(!Object.keys(profile).length){
+    return {movies:[...Store.movies].sort((a,b)=>b.rating-a.rating).slice(0,8), because:[]};
+  }
+  const saved = new Set([...Store.state.favourites,...Store.state.watchlist]);
+  const scored = Store.movies.filter(m=>!saved.has(m.id))
+    .map(m=>({m,s:m.genres.reduce((t,g)=>t+(profile[g]||0),0)}))
+    .filter(x=>x.s>0)
+    .map(x=>({m:x.m,s:x.s+x.m.rating/10}))
+    .sort((a,b)=>b.s-a.s).slice(0,8).map(x=>x.m);
+  const because = Object.entries(profile).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>e[0]);
+  return {movies:scored, because};
+}
+async function setSaved(list,id,on){
+  if(!DEMO_MODE){
+    Store.state = await http(on?"POST":"DELETE",`/api/${list}/${id}`);
+    return;
+  }
+  const arr = Store.state[list];
+  if(on && !arr.includes(id)) arr.push(id);
+  if(!on) Store.state[list] = arr.filter(x=>x!==id);
+  saveLocal();
+}
+
+/* ---------------- UI ---------------- */
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let tab="discover", genre="";
+
+function posterHTML(m, withMarks=true){
+  const [a,b] = GRADIENTS[m.genres[0]] || ["#555","#111"];
+  const fav = Store.state.favourites.includes(m.id), wl = Store.state.watchlist.includes(m.id);
+  const marks = withMarks && (fav||wl)
+    ? `<div class="marks">${fav?'<span class="mark" title="Favourite">&#9829;</span>':''}${wl?'<span class="mark" title="On watchlist">&#9733;</span>':''}</div>` : "";
+  return `<button class="poster" data-id="${m.id}" aria-label="${esc(m.title)}, ${m.year}, rated ${m.rating}">
+    <div class="art" style="background:linear-gradient(160deg,${a},${b})">
+      <span class="year">${m.year}</span>
+      <div><div class="ttl">${esc(m.title)}</div><div class="gen">${esc(m.genres.join(", "))}</div></div>
+    </div>
+    <span class="badge">${m.rating.toFixed(1)}</span>${marks}
+  </button>`;
+}
+
+function renderGrid(movies, emptyTitle, emptyHelp){
+  const g = $("#grid");
+  if(!movies.length){
+    g.innerHTML = `<div class="empty"><strong>${esc(emptyTitle)}</strong>${esc(emptyHelp)}</div>`;
+    return;
+  }
+  g.innerHTML = movies.map(m=>posterHTML(m)).join("");
+}
+
+function updateCounts(){
+  $("#c-fav").textContent = Store.state.favourites.length;
+  $("#c-watch").textContent = Store.state.watchlist.length;
+}
+
+async function render(){
+  updateCounts();
+  const note = $("#note");
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===tab));
+  document.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed", c.dataset.genre===genre));
+  try{
+    if(tab==="discover"){
+      const movies = await getMovies($("#q").value, genre, $("#sort").value);
+      note.textContent = `${movies.length} ${movies.length===1?"movie":"movies"} found`;
+      renderGrid(movies,"No movies match your search","Try a different title or clear the genre filter.");
+    }else if(tab==="foryou"){
+      const r = await getRecs();
+      note.textContent = r.because.length
+        ? `Picked for you because you like ${r.because.join(", ")}.`
+        : "Top-rated films to start with. Add favourites or watchlist items to get genre-based picks.";
+      renderGrid(r.movies,"Nothing to recommend yet","Add a few movies to your favourites to get picks.");
+    }else{
+      const all = await getMovies("", "", "rating");
+      const ids = Store.state[tab];
+      const movies = all.filter(m=>ids.includes(m.id));
+      note.textContent = movies.length ? `${movies.length} saved` : "";
+      renderGrid(movies,
+        tab==="favourites" ? "No favourites yet" : "Your watchlist is empty",
+        tab==="favourites" ? "Open a movie and choose Add to favourites." : "Open a movie and choose Add to watchlist.");
+    }
+  }catch(e){
+    note.textContent = "Could not load movies. Check that the server is running.";
+  }
+}
+
+async function openMovie(id){
+  const m = await getMovie(id);
+  const fav = Store.state.favourites.includes(id), wl = Store.state.watchlist.includes(id);
+  const dlg = $("#dlg");
+  dlg.innerHTML = `
+    <button class="close" aria-label="Close details" data-close>&times;</button>
+    <div class="d-top">
+      ${posterHTML(m,false)}
+      <div class="d-info">
+        <h2>${esc(m.title)}</h2>
+        <div class="meta">${m.year}, ${m.runtime} min, ${esc(m.genres.join(" / "))}</div>
+        <div class="rate"><span class="big">${m.rating.toFixed(1)}</span><div class="bar" title="${m.rating} out of 10"><i style="width:${m.rating*10}%"></i></div><span class="meta" style="margin:0">/ 10</span></div>
+        <p style="margin:0">${esc(m.plot)}</p>
+        <dl><dt>Director</dt><dd>${esc(m.director)}</dd><dt>Cast</dt><dd>${esc(m.cast.join(", "))}</dd></dl>
+        <div class="actions">
+          <button class="btn ${fav?"on":""}" data-toggle="favourites" data-id="${id}">${fav?"Remove from favourites":"Add to favourites"}</button>
+          <button class="btn ${wl?"on":""}" data-toggle="watchlist" data-id="${id}">${wl?"Remove from watchlist":"Add to watchlist"}</button>
+        </div>
+      </div>
+    </div>
+    <div class="d-similar"><h3>More ${esc(m.genres[0])} and similar</h3>
+      <div class="grid">${m.similar.map(s=>posterHTML(s,false)).join("")}</div></div>`;
+  if(!dlg.open) dlg.showModal();
+}
+
+/* ---------------- events ---------------- */
+document.addEventListener("click", async e=>{
+  const poster = e.target.closest(".poster");
+  if(poster && !poster.closest(".d-top")){ openMovie(Number(poster.dataset.id)); return; }
+  if(e.target.closest("[data-close]")){ $("#dlg").close(); return; }
+  const tg = e.target.closest("[data-toggle]");
+  if(tg){
+    const list = tg.dataset.toggle, id = Number(tg.dataset.id);
+    const on = !Store.state[list].includes(id);
+    await setSaved(list,id,on);
+    await openMovie(id);
+    render();
+    return;
+  }
+  const tabBtn = e.target.closest(".tab");
+  if(tabBtn){ tab = tabBtn.dataset.tab; render(); return; }
+  const chip = e.target.closest(".chip");
+  if(chip){ genre = chip.dataset.genre; tab="discover"; render(); }
+});
+$("#dlg").addEventListener("click", e=>{ if(e.target.id==="dlg") e.target.close(); });
+$("#dlg").addEventListener("close", render);
+
+let timer;
+$("#q").addEventListener("input", ()=>{ clearTimeout(timer); timer=setTimeout(()=>{ tab="discover"; render(); },200); });
+$("#sort").addEventListener("change", ()=>{ tab="discover"; render(); });
+
+(async function init(){
+  await loadState();
+  const genres = await getGenres();
+  $("#chips").innerHTML = `<button class="chip" data-genre="" aria-pressed="true">All</button>` +
+    genres.map(g=>`<button class="chip" data-genre="${esc(g)}" aria-pressed="false">${esc(g)}</button>`).join("");
+  render();
+})();
+</script>
+</body>
+</html>
